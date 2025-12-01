@@ -107,9 +107,14 @@ def analyze_ir(audio_data, sample_rate, display_duration, fft_window_size, windo
 
     return time_array, waveform, frequencies, magnitude_db
 
-def plot_waveforms(waveform_data, filenames):
+def plot_waveforms(waveform_data, filenames, display_duration_ms):
     """
     Plot all waveforms in a single graph with dark mode support
+
+    Args:
+        waveform_data: List of (time_array, waveform) tuples
+        filenames: List of filenames
+        display_duration_ms: Display duration in milliseconds
     """
     fig, ax = plt.subplots(figsize=(12, 6))
 
@@ -121,10 +126,12 @@ def plot_waveforms(waveform_data, filenames):
         ax.plot(time_ms, waveform, linewidth=0.8, color=color, alpha=0.7, label=filename)
 
     ax.set_xlabel('Time (ms)', fontsize=10)
-    ax.set_ylabel('Amplitude', fontsize=10)
-    ax.set_title('Waveform (Time Domain)', fontsize=12)
+    ax.set_ylabel('Amplitude (Normalized)', fontsize=10)
     ax.grid(True, alpha=0.3)
     ax.legend(loc='best', fontsize=9)
+
+    # Set x-axis range to 0 ~ display_duration_ms
+    ax.set_xlim([0, display_duration_ms])
 
     # Set background to transparent for better theme compatibility
     fig.patch.set_alpha(0.0)
@@ -138,7 +145,6 @@ def plot_waveforms(waveform_data, filenames):
     ax.tick_params(colors='#888888')
     ax.xaxis.label.set_color('#888888')
     ax.yaxis.label.set_color('#888888')
-    ax.title.set_color('#888888')
 
     plt.tight_layout()
     return fig
@@ -201,18 +207,25 @@ def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0):
         if octave_smoothing > 0:
             mag_db = apply_octave_smoothing(freq, mag_db, octave_smoothing)
 
+        # Normalize each file to 0dB max
+        max_magnitude = np.max(mag_db)
+        mag_db_normalized = mag_db - max_magnitude
+
         color = colors[idx % len(colors)]
-        ax.semilogx(freq, mag_db, label=filename, linewidth=1.5,
+        ax.semilogx(freq, mag_db_normalized, label=filename, linewidth=1.5,
                    color=color, alpha=0.8)
 
     ax.set_xlabel('Frequency (Hz)', fontsize=10)
-    ax.set_ylabel('Magnitude (dB)', fontsize=10)
-    ax.set_title('FFT Analysis - Frequency Response', fontsize=12)
+    ax.set_ylabel('Magnitude (dB, Normalized)', fontsize=10)
     ax.grid(True, which='both', alpha=0.3)
     ax.legend(loc='best', fontsize=9)
 
     # Set reasonable frequency limits
     ax.set_xlim([20, 20000])
+
+    # Set x-axis ticks to engineering format: 20, 100, 1k, 10k, 20k
+    ax.set_xticks([20, 100, 1000, 10000, 20000])
+    ax.set_xticklabels(['20', '100', '1k', '10k', '20k'])
 
     # Set background to transparent for better theme compatibility
     fig.patch.set_alpha(0.0)
@@ -226,7 +239,6 @@ def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0):
     ax.tick_params(colors='#888888')
     ax.xaxis.label.set_color('#888888')
     ax.yaxis.label.set_color('#888888')
-    ax.title.set_color('#888888')
 
     plt.tight_layout()
     return fig
@@ -242,10 +254,10 @@ st.sidebar.header("Analysis Settings")
 # Display duration setting (in milliseconds)
 display_duration_ms = st.sidebar.slider(
     "Waveform Display Duration (ms)",
-    min_value=10,
-    max_value=200,
-    value=50,
-    step=5,
+    min_value=1,
+    max_value=100,
+    value=10,
+    step=1,
     help="Duration of waveform to display in the time domain plot"
 )
 # Convert to seconds for processing
@@ -369,7 +381,7 @@ if analyze_button and uploaded_files:
     if waveform_data:
         # Display waveforms in a single graph
         st.header("Waveform (Time Domain)")
-        fig = plot_waveforms(waveform_data, filenames)
+        fig = plot_waveforms(waveform_data, filenames, display_duration_ms)
         st.pyplot(fig)
         plt.close(fig)
 
