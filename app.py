@@ -13,31 +13,11 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS to improve dark mode visibility and hide default footer
+# Custom CSS to hide default footer
 st.markdown("""
 <style>
     /* Hide Streamlit footer */
     footer {visibility: hidden;}
-
-    /* Ensure good contrast in dark mode */
-    .stApp {
-        color: inherit;
-    }
-
-    /* Style for file upload area */
-    [data-testid="stFileUploadDropzone"] {
-        background-color: rgba(255, 255, 255, 0.05);
-        border: 2px dashed rgba(255, 255, 255, 0.3);
-    }
-
-    /* Success message styling */
-    .success-message {
-        padding: 1rem;
-        border-radius: 0.5rem;
-        background-color: rgba(0, 128, 0, 0.2);
-        border: 1px solid rgba(0, 128, 0, 0.5);
-        margin: 1rem 0;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -133,18 +113,18 @@ def plot_waveforms(waveform_data, filenames, display_duration_ms):
     # Set x-axis range to 0 ~ display_duration_ms
     ax.set_xlim([0, display_duration_ms])
 
-    # Set background to transparent for better theme compatibility
-    fig.patch.set_alpha(0.0)
-    ax.patch.set_alpha(0.0)
+    # Set white background for light mode
+    fig.patch.set_facecolor('white')
+    ax.set_facecolor('white')
 
-    # Set axis colors based on Streamlit theme
-    ax.spines['bottom'].set_color('#888888')
-    ax.spines['top'].set_color('#888888')
-    ax.spines['left'].set_color('#888888')
-    ax.spines['right'].set_color('#888888')
-    ax.tick_params(colors='#888888')
-    ax.xaxis.label.set_color('#888888')
-    ax.yaxis.label.set_color('#888888')
+    # Set axis colors for light mode
+    ax.spines['bottom'].set_color('#333333')
+    ax.spines['top'].set_color('#333333')
+    ax.spines['left'].set_color('#333333')
+    ax.spines['right'].set_color('#333333')
+    ax.tick_params(colors='#333333')
+    ax.xaxis.label.set_color('#333333')
+    ax.yaxis.label.set_color('#333333')
 
     plt.tight_layout()
     return fig
@@ -227,18 +207,18 @@ def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0):
     ax.set_xticks([20, 100, 1000, 10000, 20000])
     ax.set_xticklabels(['20', '100', '1k', '10k', '20k'])
 
-    # Set background to transparent for better theme compatibility
-    fig.patch.set_alpha(0.0)
-    ax.patch.set_alpha(0.0)
+    # Set white background for light mode
+    fig.patch.set_facecolor('white')
+    ax.set_facecolor('white')
 
-    # Set axis colors
-    ax.spines['bottom'].set_color('#888888')
-    ax.spines['top'].set_color('#888888')
-    ax.spines['left'].set_color('#888888')
-    ax.spines['right'].set_color('#888888')
-    ax.tick_params(colors='#888888')
-    ax.xaxis.label.set_color('#888888')
-    ax.yaxis.label.set_color('#888888')
+    # Set axis colors for light mode
+    ax.spines['bottom'].set_color('#333333')
+    ax.spines['top'].set_color('#333333')
+    ax.spines['left'].set_color('#333333')
+    ax.spines['right'].set_color('#333333')
+    ax.tick_params(colors='#333333')
+    ax.xaxis.label.set_color('#333333')
+    ax.yaxis.label.set_color('#333333')
 
     plt.tight_layout()
     return fig
