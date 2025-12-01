@@ -1,0 +1,13 @@
+# Guitar IR Analyzer - 必要なライブラリ
+
+# Streamlitフレームワーク
+streamlit>=1.28.0
+
+# 数値計算
+numpy>=1.24.0
+
+# グラフ描画
+matplotlib>=3.7.0
+
+# 信号処理・WAV読み込み
+scipy>=1.11.0
