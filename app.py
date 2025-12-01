@@ -165,14 +165,14 @@ def generate_colors(num_files, color_scheme='default'):
         # Base color: (10, 62, 85) with alpha from 0 to 0.65
         base_r, base_g, base_b = 10 / 255.0, 62 / 255.0, 85 / 255.0
         for i in range(num_files):
-            alpha = 0.0 + (0.65 - 0.0) * (i / max(num_files - 1, 1))
+            alpha = 1.0 - (1.0-0.65) * (i / max(num_files - 1, 1))
             colors.append((base_r, base_g, base_b, alpha))
 
     elif color_scheme == 'alpha_red':
         # Base color: (191, 12, 34) with alpha from 0 to 0.65
         base_r, base_g, base_b = 191 / 255.0, 12 / 255.0, 34 / 255.0
         for i in range(num_files):
-            alpha = 0.0 + (0.65 - 0.0) * (i / max(num_files - 1, 1))
+            alpha = 1.0 - (1.0-0.65) * (i / max(num_files - 1, 1))
             colors.append((base_r, base_g, base_b, alpha))
 
     elif color_scheme == 'gradient':
