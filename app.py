@@ -302,13 +302,19 @@ smoothing_label = st.sidebar.selectbox(
 )
 smoothing = smoothing_options[smoothing_label]
 
-# Graph resolution (DPI)
+# Export Settings Section
+st.sidebar.markdown("---")
+st.sidebar.header("Export Settings")
+
+# Graph resolution (DPI) for export
 graph_dpi = st.sidebar.selectbox(
-    "Graph Resolution (DPI)",
+    "Export Image Resolution (DPI)",
     options=[100, 200, 300, 400, 600, 800, 1000, 1200, 1500, 2000],
     index=3,  # Default to 400 DPI
-    help="Resolution for downloadable images. Note: Preview images are limited by browser display, but downloaded images will use the selected DPI."
+    help="🔽 Resolution for downloaded images. Preview is limited by browser, but downloads will use full resolution."
 )
+
+st.sidebar.info("💡 Higher DPI = sharper prints & larger files")
 
 # File Upload Section
 st.header("File Upload")
@@ -325,6 +331,10 @@ if uploaded_files:
     st.markdown(f"**{len(uploaded_files)} file(s) uploaded**")
     for i, file in enumerate(uploaded_files, 1):
         st.text(f"  {i}. {file.name}")
+
+# Initialize session state for storing analysis results
+if 'analysis_results' not in st.session_state:
+    st.session_state.analysis_results = None
 
 # Add execution button
 analyze_button = st.button("Start Analysis", type="primary", disabled=(not uploaded_files))
@@ -368,56 +378,73 @@ if analyze_button and uploaded_files:
     # Clear progress bar
     progress_bar.empty()
 
+    # Store results in session state
     if waveform_data:
-        # Display waveforms in a single graph
-        st.header("Waveform (Time Domain)")
-        fig = plot_waveforms(waveform_data, filenames, display_duration_ms, graph_dpi)
-        st.pyplot(fig)
-
-        # Save high-resolution image to buffer for download
-        buf = io.BytesIO()
-        fig.savefig(buf, format='png', dpi=graph_dpi, bbox_inches='tight')
-        buf.seek(0)
-
-        # Download button for high-resolution image
-        st.download_button(
-            label="Download High-Resolution Waveform (PNG)",
-            data=buf,
-            file_name=f"waveform_{graph_dpi}dpi.png",
-            mime="image/png",
-            help=f"Download waveform plot at {graph_dpi} DPI"
-        )
-
-        plt.close(fig)
-
-        # Display FFT analysis
-        st.header("FFT Analysis (Frequency Response)")
-
-        # Create combined FFT plot
-        all_frequencies = [data[0] for data in fft_data]
-        all_magnitudes = [data[1] for data in fft_data]
-
-        fig = plot_fft(all_frequencies, all_magnitudes, filenames, smoothing, graph_dpi)
-        st.pyplot(fig)
-
-        # Save high-resolution image to buffer for download
-        buf_fft = io.BytesIO()
-        fig.savefig(buf_fft, format='png', dpi=graph_dpi, bbox_inches='tight')
-        buf_fft.seek(0)
-
-        # Download button for high-resolution image
-        st.download_button(
-            label="Download High-Resolution FFT Plot (PNG)",
-            data=buf_fft,
-            file_name=f"fft_plot_{graph_dpi}dpi.png",
-            mime="image/png",
-            help=f"Download FFT plot at {graph_dpi} DPI"
-        )
-
-        plt.close(fig)
-
+        st.session_state.analysis_results = {
+            'waveform_data': waveform_data,
+            'fft_data': fft_data,
+            'filenames': filenames,
+            'display_duration_ms': display_duration_ms,
+            'smoothing': smoothing
+        }
         st.success("Analysis complete!")
     else:
         st.warning("No files were successfully processed.")
+
+# Display results if available in session state
+if st.session_state.analysis_results is not None:
+    results = st.session_state.analysis_results
+    waveform_data = results['waveform_data']
+    fft_data = results['fft_data']
+    filenames = results['filenames']
+    display_duration_ms = results['display_duration_ms']
+    smoothing = results['smoothing']
+
+    # Display waveforms in a single graph
+    st.header("Waveform (Time Domain)")
+    fig = plot_waveforms(waveform_data, filenames, display_duration_ms, graph_dpi)
+    st.pyplot(fig)
+
+    # Save high-resolution image to buffer for download
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', dpi=graph_dpi, bbox_inches='tight')
+    buf.seek(0)
+
+    # Download button for high-resolution image
+    st.download_button(
+        label="📥 Download High-Resolution Waveform (PNG)",
+        data=buf,
+        file_name=f"waveform_{graph_dpi}dpi.png",
+        mime="image/png",
+        help=f"Download waveform plot at {graph_dpi} DPI"
+    )
+
+    plt.close(fig)
+
+    # Display FFT analysis
+    st.header("FFT Analysis (Frequency Response)")
+
+    # Create combined FFT plot
+    all_frequencies = [data[0] for data in fft_data]
+    all_magnitudes = [data[1] for data in fft_data]
+
+    fig = plot_fft(all_frequencies, all_magnitudes, filenames, smoothing, graph_dpi)
+    st.pyplot(fig)
+
+    # Save high-resolution image to buffer for download
+    buf_fft = io.BytesIO()
+    fig.savefig(buf_fft, format='png', dpi=graph_dpi, bbox_inches='tight')
+    buf_fft.seek(0)
+
+    # Download button for high-resolution image
+    st.download_button(
+        label="📥 Download High-Resolution FFT Plot (PNG)",
+        data=buf_fft,
+        file_name=f"fft_plot_{graph_dpi}dpi.png",
+        mime="image/png",
+        help=f"Download FFT plot at {graph_dpi} DPI"
+    )
+
+    plt.close(fig)
 elif not uploaded_files:
     st.info("Please upload WAV files to begin analysis.")
