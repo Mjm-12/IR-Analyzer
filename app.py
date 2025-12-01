@@ -307,7 +307,7 @@ graph_dpi = st.sidebar.selectbox(
     "Graph Resolution (DPI)",
     options=[100, 200, 300, 400, 600, 800, 1000, 1200, 1500, 2000],
     index=3,  # Default to 400 DPI
-    help="Higher DPI values produce sharper graphs but larger file sizes"
+    help="Resolution for downloadable images. Note: Preview images are limited by browser display, but downloaded images will use the selected DPI."
 )
 
 # File Upload Section
@@ -372,7 +372,22 @@ if analyze_button and uploaded_files:
         # Display waveforms in a single graph
         st.header("Waveform (Time Domain)")
         fig = plot_waveforms(waveform_data, filenames, display_duration_ms, graph_dpi)
-        st.pyplot(fig, dpi=graph_dpi)
+        st.pyplot(fig)
+
+        # Save high-resolution image to buffer for download
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png', dpi=graph_dpi, bbox_inches='tight')
+        buf.seek(0)
+
+        # Download button for high-resolution image
+        st.download_button(
+            label="Download High-Resolution Waveform (PNG)",
+            data=buf,
+            file_name=f"waveform_{graph_dpi}dpi.png",
+            mime="image/png",
+            help=f"Download waveform plot at {graph_dpi} DPI"
+        )
+
         plt.close(fig)
 
         # Display FFT analysis
@@ -383,7 +398,22 @@ if analyze_button and uploaded_files:
         all_magnitudes = [data[1] for data in fft_data]
 
         fig = plot_fft(all_frequencies, all_magnitudes, filenames, smoothing, graph_dpi)
-        st.pyplot(fig, dpi=graph_dpi)
+        st.pyplot(fig)
+
+        # Save high-resolution image to buffer for download
+        buf_fft = io.BytesIO()
+        fig.savefig(buf_fft, format='png', dpi=graph_dpi, bbox_inches='tight')
+        buf_fft.seek(0)
+
+        # Download button for high-resolution image
+        st.download_button(
+            label="Download High-Resolution FFT Plot (PNG)",
+            data=buf_fft,
+            file_name=f"fft_plot_{graph_dpi}dpi.png",
+            mime="image/png",
+            help=f"Download FFT plot at {graph_dpi} DPI"
+        )
+
         plt.close(fig)
 
         st.success("Analysis complete!")
