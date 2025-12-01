@@ -108,7 +108,7 @@ def plot_waveforms(waveform_data, filenames, display_duration_ms, dpi=400, color
 
     for idx, ((time_ms, waveform), filename) in enumerate(zip(waveform_data, filenames)):
         color = colors[idx % len(colors)]
-        ax.plot(time_ms, waveform, linewidth=0.8, color=color, label=filename)
+        ax.plot(time_ms, waveform, linewidth=1.2, color=color, label=filename)
 
     ax.set_xlabel('Time (ms)', fontsize=10)
     ax.set_ylabel('Amplitude (Normalized)', fontsize=10)
@@ -259,7 +259,7 @@ def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0, dpi=400, 
         mag_db_normalized = mag_db - max_magnitude
 
         color = colors[idx % len(colors)]
-        ax.semilogx(freq, mag_db_normalized, label=filename, linewidth=1.5, color=color)
+        ax.semilogx(freq, mag_db_normalized, label=filename, linewidth=1.2, color=color)
 
     ax.set_xlabel('Frequency (Hz)', fontsize=10)
     ax.set_ylabel('Magnitude (dB, Normalized)', fontsize=10)
