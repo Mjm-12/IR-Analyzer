@@ -422,6 +422,12 @@ uploaded_files = st.file_uploader(
     help="Upload up to 8 WAV files - Limit 200MB per file"
 )
 
+# Initialize session state for storing analysis results and file selection
+if 'analysis_results' not in st.session_state:
+    st.session_state.analysis_results = None
+if 'file_selection' not in st.session_state:
+    st.session_state.file_selection = {}
+
 # Display file list and enforce file limit
 if uploaded_files:
     if len(uploaded_files) > 8:
@@ -429,13 +435,21 @@ if uploaded_files:
         uploaded_files = uploaded_files[:8]  # Take only first 8
         st.warning("Only the first 8 files will be processed.")
 
-    st.markdown(f"**{len(uploaded_files)} file(s) uploaded**")
-    for i, file in enumerate(uploaded_files, 1):
-        st.text(f"  {i}. {file.name}")
+    st.markdown(f"**{len(uploaded_files)} file(s) uploaded** - Select files to display:")
 
-# Initialize session state for storing analysis results
-if 'analysis_results' not in st.session_state:
-    st.session_state.analysis_results = None
+    # Display all files with checkboxes in a single list (no pagination)
+    for i, file in enumerate(uploaded_files):
+        # Initialize selection state (default: all checked)
+        if file.name not in st.session_state.file_selection:
+            st.session_state.file_selection[file.name] = True
+
+        # Checkbox for each file
+        is_selected = st.checkbox(
+            f"{i+1}. {file.name}",
+            value=st.session_state.file_selection[file.name],
+            key=f"file_checkbox_{i}"
+        )
+        st.session_state.file_selection[file.name] = is_selected
 
 # Add execution button
 analyze_button = st.button("Start Analysis", type="primary", disabled=(not uploaded_files))
@@ -499,55 +513,67 @@ if st.session_state.analysis_results is not None:
     fft_data = results['fft_data']
     filenames = results['filenames']
 
-    # Generate colors based on selected scheme
-    num_files = len(filenames)
-    plot_colors = generate_colors(num_files, color_scheme_name)
+    # Filter data based on checkbox selection
+    selected_indices = [i for i, name in enumerate(filenames)
+                       if st.session_state.file_selection.get(name, True)]
 
-    # Display waveforms in a single graph
-    st.header("Waveform (Time Domain)")
-    fig = plot_waveforms(waveform_data, filenames, display_duration_ms, graph_dpi, colors=plot_colors)
-    st.pyplot(fig)
+    if not selected_indices:
+        st.warning("⚠️ No files selected for display. Please check at least one file.")
+    else:
+        filtered_waveform_data = [waveform_data[i] for i in selected_indices]
+        filtered_fft_data = [fft_data[i] for i in selected_indices]
+        filtered_filenames = [filenames[i] for i in selected_indices]
 
-    # Save high-resolution image to buffer for download
-    buf = io.BytesIO()
-    fig.savefig(buf, format='png', dpi=graph_dpi, bbox_inches='tight')
-    buf.seek(0)
+        # Generate colors based on selected scheme
+        num_files = len(filtered_filenames)
+        plot_colors = generate_colors(num_files, color_scheme_name)
 
-    # Download button for high-resolution image
-    st.download_button(
-        label="📥 Download High-Resolution Waveform (PNG)",
-        data=buf,
-        file_name=f"waveform_{graph_dpi}dpi.png",
-        mime="image/png",
-        help=f"Download waveform plot at {graph_dpi} DPI"
-    )
+        # Display waveforms in a single graph
+        st.header("Waveform (Time Domain)")
+        st.info(f"📊 Displaying {num_files} of {len(filenames)} file(s)")
+        fig = plot_waveforms(filtered_waveform_data, filtered_filenames, display_duration_ms, graph_dpi, colors=plot_colors)
+        st.pyplot(fig)
 
-    plt.close(fig)
+        # Save high-resolution image to buffer for download
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png', dpi=graph_dpi, bbox_inches='tight')
+        buf.seek(0)
 
-    # Display FFT analysis
-    st.header("FFT Analysis (Frequency Response)")
+        # Download button for high-resolution image
+        st.download_button(
+            label="📥 Download High-Resolution Waveform (PNG)",
+            data=buf,
+            file_name=f"waveform_{graph_dpi}dpi.png",
+            mime="image/png",
+            help=f"Download waveform plot at {graph_dpi} DPI"
+        )
 
-    # Create combined FFT plot
-    all_frequencies = [data[0] for data in fft_data]
-    all_magnitudes = [data[1] for data in fft_data]
+        plt.close(fig)
 
-    fig = plot_fft(all_frequencies, all_magnitudes, filenames, smoothing, graph_dpi, y_min=fft_y_min, colors=plot_colors)
-    st.pyplot(fig)
+        # Display FFT analysis
+        st.header("FFT Analysis (Frequency Response)")
 
-    # Save high-resolution image to buffer for download
-    buf_fft = io.BytesIO()
-    fig.savefig(buf_fft, format='png', dpi=graph_dpi, bbox_inches='tight')
-    buf_fft.seek(0)
+        # Create combined FFT plot with filtered data
+        all_frequencies = [filtered_fft_data[i][0] for i in range(len(filtered_fft_data))]
+        all_magnitudes = [filtered_fft_data[i][1] for i in range(len(filtered_fft_data))]
 
-    # Download button for high-resolution image
-    st.download_button(
-        label="📥 Download High-Resolution FFT Plot (PNG)",
-        data=buf_fft,
-        file_name=f"fft_plot_{graph_dpi}dpi.png",
-        mime="image/png",
-        help=f"Download FFT plot at {graph_dpi} DPI"
-    )
+        fig = plot_fft(all_frequencies, all_magnitudes, filtered_filenames, smoothing, graph_dpi, y_min=fft_y_min, colors=plot_colors)
+        st.pyplot(fig)
 
-    plt.close(fig)
+        # Save high-resolution image to buffer for download
+        buf_fft = io.BytesIO()
+        fig.savefig(buf_fft, format='png', dpi=graph_dpi, bbox_inches='tight')
+        buf_fft.seek(0)
+
+        # Download button for high-resolution image
+        st.download_button(
+            label="📥 Download High-Resolution FFT Plot (PNG)",
+            data=buf_fft,
+            file_name=f"fft_plot_{graph_dpi}dpi.png",
+            mime="image/png",
+            help=f"Download FFT plot at {graph_dpi} DPI"
+        )
+
+        plt.close(fig)
 elif not uploaded_files:
     st.info("Please upload WAV files to begin analysis.")
