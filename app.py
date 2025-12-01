@@ -168,7 +168,7 @@ def apply_octave_smoothing(frequencies, magnitude_db, octave_fraction):
 
     return smoothed
 
-def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0, dpi=400):
+def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0, dpi=400, y_min=-40, y_max=5):
     """
     Plot FFT frequency response with dark mode support
 
@@ -178,6 +178,8 @@ def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0, dpi=400):
         filenames: List of filenames
         octave_smoothing: Octave fraction for smoothing (0 = no smoothing)
         dpi: Graph resolution in dots per inch
+        y_min: Minimum value for Y-axis (dB)
+        y_max: Maximum value for Y-axis (dB)
     """
     fig, ax = plt.subplots(figsize=(12, 6), dpi=dpi)
 
@@ -208,6 +210,9 @@ def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0, dpi=400):
     # Set x-axis ticks to engineering format: 20, 100, 1k, 10k, 20k
     ax.set_xticks([20, 100, 1000, 10000, 20000])
     ax.set_xticklabels(['20', '100', '1k', '10k', '20k'])
+
+    # Set Y-axis range
+    ax.set_ylim([y_min, y_max])
 
     # Set white background for light mode
     fig.patch.set_facecolor('white')
@@ -302,6 +307,14 @@ smoothing_label = st.sidebar.selectbox(
 )
 smoothing = smoothing_options[smoothing_label]
 
+# FFT Y-axis range
+fft_y_min = st.sidebar.selectbox(
+    "FFT Y-axis Minimum (dB)",
+    options=list(range(-10, -130, -10)),  # -10, -20, -30, ..., -120
+    index=3,  # Default to -40
+    help="Set the minimum value for FFT plot Y-axis (maximum is fixed at +5 dB)"
+)
+
 # Export Settings Section
 st.sidebar.markdown("---")
 st.sidebar.header("Export Settings")
@@ -378,27 +391,25 @@ if analyze_button and uploaded_files:
     # Clear progress bar
     progress_bar.empty()
 
-    # Store results in session state
+    # Store results in session state (only raw analysis data, not display settings)
     if waveform_data:
         st.session_state.analysis_results = {
             'waveform_data': waveform_data,
             'fft_data': fft_data,
-            'filenames': filenames,
-            'display_duration_ms': display_duration_ms,
-            'smoothing': smoothing
+            'filenames': filenames
         }
         st.success("Analysis complete!")
     else:
         st.warning("No files were successfully processed.")
 
 # Display results if available in session state
+# Note: Display settings (duration, smoothing, y-axis) use current sidebar values
+# This allows users to adjust visualization without re-analyzing
 if st.session_state.analysis_results is not None:
     results = st.session_state.analysis_results
     waveform_data = results['waveform_data']
     fft_data = results['fft_data']
     filenames = results['filenames']
-    display_duration_ms = results['display_duration_ms']
-    smoothing = results['smoothing']
 
     # Display waveforms in a single graph
     st.header("Waveform (Time Domain)")
@@ -428,7 +439,7 @@ if st.session_state.analysis_results is not None:
     all_frequencies = [data[0] for data in fft_data]
     all_magnitudes = [data[1] for data in fft_data]
 
-    fig = plot_fft(all_frequencies, all_magnitudes, filenames, smoothing, graph_dpi)
+    fig = plot_fft(all_frequencies, all_magnitudes, filenames, smoothing, graph_dpi, y_min=fft_y_min)
     st.pyplot(fig)
 
     # Save high-resolution image to buffer for download
