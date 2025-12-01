@@ -87,7 +87,8 @@ def analyze_ir(audio_data, sample_rate, display_duration, fft_window_size, windo
 
     return time_array, waveform, frequencies, magnitude_db
 
-def plot_waveforms(waveform_data, filenames, display_duration_ms, dpi=400, colors=None):
+def plot_waveforms(waveform_data, filenames, display_duration_ms, dpi=400, colors=None,
+                   text_size=10, text_color='#333333', grid_linewidth=0.8, grid_alpha=0.3, grid_color='#808080'):
     """
     Plot all waveforms in a single graph with dark mode support
 
@@ -97,6 +98,11 @@ def plot_waveforms(waveform_data, filenames, display_duration_ms, dpi=400, color
         display_duration_ms: Display duration in milliseconds
         dpi: Graph resolution in dots per inch
         colors: List of color tuples (R, G, B, A) in [0, 1] range
+        text_size: Font size for labels and legends
+        text_color: Color for text elements (hex)
+        grid_linewidth: Width of grid lines
+        grid_alpha: Transparency of grid lines
+        grid_color: Color of grid lines (hex)
     """
     fig, ax = plt.subplots(figsize=(12, 6), dpi=dpi)
 
@@ -110,10 +116,11 @@ def plot_waveforms(waveform_data, filenames, display_duration_ms, dpi=400, color
         color = colors[idx % len(colors)]
         ax.plot(time_ms, waveform, linewidth=1.2, color=color, label=filename)
 
-    ax.set_xlabel('Time (ms)', fontsize=10)
-    ax.set_ylabel('Amplitude (Normalized)', fontsize=10)
-    ax.grid(True, alpha=0.3)
-    ax.legend(loc='best', fontsize=9)
+    ax.set_xlabel('Time (ms)', fontsize=text_size, color=text_color)
+    ax.set_ylabel('Amplitude (Normalized)', fontsize=text_size, color=text_color)
+    ax.grid(True, alpha=grid_alpha, linewidth=grid_linewidth, color=grid_color)
+    ax.legend(loc='best', fontsize=text_size-1)
+    ax.tick_params(colors=text_color, labelsize=text_size-1)
 
     # Set x-axis range to 0 ~ display_duration_ms
     ax.set_xlim([0, display_duration_ms])
@@ -122,14 +129,11 @@ def plot_waveforms(waveform_data, filenames, display_duration_ms, dpi=400, color
     fig.patch.set_facecolor('white')
     ax.set_facecolor('white')
 
-    # Set axis colors for light mode
-    ax.spines['bottom'].set_color('#333333')
-    ax.spines['top'].set_color('#333333')
-    ax.spines['left'].set_color('#333333')
-    ax.spines['right'].set_color('#333333')
-    ax.tick_params(colors='#333333')
-    ax.xaxis.label.set_color('#333333')
-    ax.yaxis.label.set_color('#333333')
+    # Set axis colors
+    ax.spines['bottom'].set_color(text_color)
+    ax.spines['top'].set_color(text_color)
+    ax.spines['left'].set_color(text_color)
+    ax.spines['right'].set_color(text_color)
 
     plt.tight_layout()
     return fig
@@ -227,7 +231,8 @@ def apply_octave_smoothing(frequencies, magnitude_db, octave_fraction):
 
     return smoothed
 
-def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0, dpi=400, y_min=-40, y_max=5, colors=None):
+def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0, dpi=400, y_min=-40, y_max=5, colors=None,
+             text_size=10, text_color='#333333', grid_linewidth=0.8, grid_alpha=0.3, grid_color='#808080'):
     """
     Plot FFT frequency response with dark mode support
 
@@ -240,6 +245,11 @@ def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0, dpi=400, 
         y_min: Minimum value for Y-axis (dB)
         y_max: Maximum value for Y-axis (dB)
         colors: List of color tuples (R, G, B, A) in [0, 1] range
+        text_size: Font size for labels and legends
+        text_color: Color for text elements (hex)
+        grid_linewidth: Width of grid lines
+        grid_alpha: Transparency of grid lines
+        grid_color: Color of grid lines (hex)
     """
     fig, ax = plt.subplots(figsize=(12, 6), dpi=dpi)
 
@@ -261,10 +271,11 @@ def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0, dpi=400, 
         color = colors[idx % len(colors)]
         ax.semilogx(freq, mag_db_normalized, label=filename, linewidth=1.2, color=color)
 
-    ax.set_xlabel('Frequency (Hz)', fontsize=10)
-    ax.set_ylabel('Magnitude (dB, Normalized)', fontsize=10)
-    ax.grid(True, which='both', alpha=0.3)
-    ax.legend(loc='best', fontsize=9)
+    ax.set_xlabel('Frequency (Hz)', fontsize=text_size, color=text_color)
+    ax.set_ylabel('Magnitude (dB, Normalized)', fontsize=text_size, color=text_color)
+    ax.grid(True, which='both', alpha=grid_alpha, linewidth=grid_linewidth, color=grid_color)
+    ax.legend(loc='best', fontsize=text_size-1)
+    ax.tick_params(colors=text_color, labelsize=text_size-1)
 
     # Set reasonable frequency limits
     ax.set_xlim([20, 20000])
@@ -280,14 +291,11 @@ def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0, dpi=400, 
     fig.patch.set_facecolor('white')
     ax.set_facecolor('white')
 
-    # Set axis colors for light mode
-    ax.spines['bottom'].set_color('#333333')
-    ax.spines['top'].set_color('#333333')
-    ax.spines['left'].set_color('#333333')
-    ax.spines['right'].set_color('#333333')
-    ax.tick_params(colors='#333333')
-    ax.xaxis.label.set_color('#333333')
-    ax.yaxis.label.set_color('#333333')
+    # Set axis colors
+    ax.spines['bottom'].set_color(text_color)
+    ax.spines['top'].set_color(text_color)
+    ax.spines['left'].set_color(text_color)
+    ax.spines['right'].set_color(text_color)
 
     plt.tight_layout()
     return fig
@@ -412,6 +420,36 @@ graph_dpi = st.sidebar.selectbox(
 
 st.sidebar.info("💡 Higher DPI = sharper prints & larger files")
 
+# Graph Appearance Settings
+st.sidebar.markdown("---")
+st.sidebar.header("Graph Appearance")
+
+# Text settings
+with st.sidebar.expander("Text Settings", expanded=False):
+    text_size = st.slider("Text Size", min_value=6, max_value=20, value=10, step=1,
+                         help="Font size for axis labels and legends")
+
+    st.markdown("**Text Color (RGB)**")
+    text_r = st.slider("Red", min_value=0, max_value=255, value=51, key="text_r")
+    text_g = st.slider("Green", min_value=0, max_value=255, value=51, key="text_g")
+    text_b = st.slider("Blue", min_value=0, max_value=255, value=51, key="text_b")
+    text_color = f"#{text_r:02x}{text_g:02x}{text_b:02x}"
+    st.color_picker("Preview", value=text_color, disabled=True, key="text_preview")
+
+# Grid settings
+with st.sidebar.expander("Grid Settings", expanded=False):
+    grid_linewidth = st.slider("Grid Line Width", min_value=0.1, max_value=3.0, value=0.8, step=0.1,
+                               help="Width of grid lines")
+    grid_alpha = st.slider("Grid Transparency", min_value=0.0, max_value=1.0, value=0.3, step=0.05,
+                          help="Grid line transparency (0=invisible, 1=opaque)")
+
+    st.markdown("**Grid Color (RGB)**")
+    grid_r = st.slider("Red", min_value=0, max_value=255, value=128, key="grid_r")
+    grid_g = st.slider("Green", min_value=0, max_value=255, value=128, key="grid_g")
+    grid_b = st.slider("Blue", min_value=0, max_value=255, value=128, key="grid_b")
+    grid_color = f"#{grid_r:02x}{grid_g:02x}{grid_b:02x}"
+    st.color_picker("Preview", value=grid_color, disabled=True, key="grid_preview")
+
 # File Upload Section
 st.header("File Upload")
 
@@ -531,7 +569,9 @@ if st.session_state.analysis_results is not None:
         # Display waveforms in a single graph
         st.header("Waveform (Time Domain)")
         st.info(f"📊 Displaying {num_files} of {len(filenames)} file(s)")
-        fig = plot_waveforms(filtered_waveform_data, filtered_filenames, display_duration_ms, graph_dpi, colors=plot_colors)
+        fig = plot_waveforms(filtered_waveform_data, filtered_filenames, display_duration_ms, graph_dpi,
+                            colors=plot_colors, text_size=text_size, text_color=text_color,
+                            grid_linewidth=grid_linewidth, grid_alpha=grid_alpha, grid_color=grid_color)
         st.pyplot(fig)
 
         # Save high-resolution image to buffer for download
@@ -557,7 +597,9 @@ if st.session_state.analysis_results is not None:
         all_frequencies = [filtered_fft_data[i][0] for i in range(len(filtered_fft_data))]
         all_magnitudes = [filtered_fft_data[i][1] for i in range(len(filtered_fft_data))]
 
-        fig = plot_fft(all_frequencies, all_magnitudes, filtered_filenames, smoothing, graph_dpi, y_min=fft_y_min, colors=plot_colors)
+        fig = plot_fft(all_frequencies, all_magnitudes, filtered_filenames, smoothing, graph_dpi,
+                      y_min=fft_y_min, colors=plot_colors, text_size=text_size, text_color=text_color,
+                      grid_linewidth=grid_linewidth, grid_alpha=grid_alpha, grid_color=grid_color)
         st.pyplot(fig)
 
         # Save high-resolution image to buffer for download
