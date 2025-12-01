@@ -8,7 +8,7 @@ import io
 # Page configuration
 st.set_page_config(
     page_title="Guitar IR Analyzer",
-    page_icon="🎸",
+    page_icon="🔈",
     layout="wide",
     initial_sidebar_state="expanded"
 )
