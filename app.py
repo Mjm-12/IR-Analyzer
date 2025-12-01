@@ -87,7 +87,7 @@ def analyze_ir(audio_data, sample_rate, display_duration, fft_window_size, windo
 
     return time_array, waveform, frequencies, magnitude_db
 
-def plot_waveforms(waveform_data, filenames, display_duration_ms):
+def plot_waveforms(waveform_data, filenames, display_duration_ms, dpi=400):
     """
     Plot all waveforms in a single graph with dark mode support
 
@@ -95,8 +95,9 @@ def plot_waveforms(waveform_data, filenames, display_duration_ms):
         waveform_data: List of (time_array, waveform) tuples
         filenames: List of filenames
         display_duration_ms: Display duration in milliseconds
+        dpi: Graph resolution in dots per inch
     """
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=(12, 6), dpi=dpi)
 
     colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
               '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
@@ -167,7 +168,7 @@ def apply_octave_smoothing(frequencies, magnitude_db, octave_fraction):
 
     return smoothed
 
-def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0):
+def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0, dpi=400):
     """
     Plot FFT frequency response with dark mode support
 
@@ -176,8 +177,9 @@ def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0):
         magnitude_db: List of magnitude arrays in dB
         filenames: List of filenames
         octave_smoothing: Octave fraction for smoothing (0 = no smoothing)
+        dpi: Graph resolution in dots per inch
     """
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=(12, 6), dpi=dpi)
 
     colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
               '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
@@ -300,6 +302,14 @@ smoothing_label = st.sidebar.selectbox(
 )
 smoothing = smoothing_options[smoothing_label]
 
+# Graph resolution (DPI)
+graph_dpi = st.sidebar.selectbox(
+    "Graph Resolution (DPI)",
+    options=[100, 200, 300, 400, 600, 800, 1000, 1200, 1500, 2000],
+    index=3,  # Default to 400 DPI
+    help="Higher DPI values produce sharper graphs but larger file sizes"
+)
+
 # File Upload Section
 st.header("File Upload")
 
@@ -361,7 +371,7 @@ if analyze_button and uploaded_files:
     if waveform_data:
         # Display waveforms in a single graph
         st.header("Waveform (Time Domain)")
-        fig = plot_waveforms(waveform_data, filenames, display_duration_ms)
+        fig = plot_waveforms(waveform_data, filenames, display_duration_ms, graph_dpi)
         st.pyplot(fig)
         plt.close(fig)
 
@@ -372,7 +382,7 @@ if analyze_button and uploaded_files:
         all_frequencies = [data[0] for data in fft_data]
         all_magnitudes = [data[1] for data in fft_data]
 
-        fig = plot_fft(all_frequencies, all_magnitudes, filenames, smoothing)
+        fig = plot_fft(all_frequencies, all_magnitudes, filenames, smoothing, graph_dpi)
         st.pyplot(fig)
         plt.close(fig)
 
