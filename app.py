@@ -104,7 +104,7 @@ def plot_waveforms(waveform_data, filenames, display_duration_ms, dpi=400, color
         grid_alpha: Transparency of grid lines
         grid_color: Color of grid lines (hex)
     """
-    fig, ax = plt.subplots(figsize=(12, 6), dpi=dpi)
+    fig, ax = plt.subplots(figsize=(12, 6), dpi=dpi, constrained_layout=True)
 
     # Use default colors if none provided
     if colors is None:
@@ -135,7 +135,6 @@ def plot_waveforms(waveform_data, filenames, display_duration_ms, dpi=400, color
     ax.spines['left'].set_color(text_color)
     ax.spines['right'].set_color(text_color)
 
-    plt.tight_layout()
     return fig
 
 def generate_colors(num_files, color_scheme='default'):
@@ -251,7 +250,7 @@ def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0, dpi=400, 
         grid_alpha: Transparency of grid lines
         grid_color: Color of grid lines (hex)
     """
-    fig, ax = plt.subplots(figsize=(12, 6), dpi=dpi)
+    fig, ax = plt.subplots(figsize=(12, 6), dpi=dpi, constrained_layout=True)
 
     # Use default colors if none provided
     if colors is None:
@@ -297,7 +296,6 @@ def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0, dpi=400, 
     ax.spines['left'].set_color(text_color)
     ax.spines['right'].set_color(text_color)
 
-    plt.tight_layout()
     return fig
 
 # Main App
