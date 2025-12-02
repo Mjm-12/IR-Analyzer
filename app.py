@@ -111,6 +111,11 @@ def calculate_fft(audio_data, sample_rate, fft_duration, fft_window_size, window
     # Apply window to FFT data
     windowed_data = fft_data * window
 
+    # Apply coherent gain correction to compensate for window amplitude loss
+    # This ensures consistent amplitude regardless of window function
+    window_correction = len(window) / np.sum(window)
+    windowed_data = windowed_data * window_correction
+
     # FFT Analysis with actual FFT size
     fft_result = np.fft.rfft(windowed_data, n=actual_fft_size)
     magnitude = np.abs(fft_result)
