@@ -21,20 +21,17 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-def analyze_ir(audio_data, sample_rate, display_duration, fft_duration, fft_window_size, window_function='boxcar'):
+def calculate_waveform(audio_data, sample_rate, display_duration):
     """
-    Analyze impulse response and return waveform and FFT data
+    Calculate waveform data for display
 
     Args:
         audio_data: Audio samples
         sample_rate: Sample rate in Hz
-        display_duration: Duration to display in waveform plot (seconds)
-        fft_duration: Duration to use for FFT analysis (seconds)
-        fft_window_size: FFT window size
-        window_function: Window function name for FFT
+        display_duration: Duration to display (seconds)
 
     Returns:
-        tuple: (time_array, waveform, frequencies, magnitude_db, fft_info)
+        tuple: (time_array, waveform)
     """
     # Ensure mono
     if len(audio_data.shape) > 1:
@@ -43,13 +40,36 @@ def analyze_ir(audio_data, sample_rate, display_duration, fft_duration, fft_wind
     # Normalize
     audio_data = audio_data / np.max(np.abs(audio_data))
 
-    # Calculate samples to display (for waveform)
+    # Calculate samples to display
     samples_to_display = int(display_duration * sample_rate)
     samples_to_display = min(samples_to_display, len(audio_data))
 
     # Time array for waveform
     time_array = np.arange(samples_to_display) / sample_rate * 1000  # Convert to ms
     waveform = audio_data[:samples_to_display]
+
+    return time_array, waveform
+
+def calculate_fft(audio_data, sample_rate, fft_duration, fft_window_size, window_function='boxcar'):
+    """
+    Calculate FFT data for frequency analysis
+
+    Args:
+        audio_data: Audio samples
+        sample_rate: Sample rate in Hz
+        fft_duration: Duration to use for FFT analysis (seconds)
+        fft_window_size: Minimum FFT window size
+        window_function: Window function name for FFT
+
+    Returns:
+        tuple: (frequencies, magnitude_db, fft_info)
+    """
+    # Ensure mono
+    if len(audio_data.shape) > 1:
+        audio_data = np.mean(audio_data, axis=1)
+
+    # Normalize
+    audio_data = audio_data / np.max(np.abs(audio_data))
 
     # Calculate target samples from FFT duration (no clipping by file length)
     target_fft_samples = int(fft_duration * sample_rate)
@@ -112,6 +132,26 @@ def analyze_ir(audio_data, sample_rate, display_duration, fft_duration, fft_wind
         'nyquist_frequency': sample_rate / 2
     }
 
+    return frequencies, magnitude_db, fft_info
+
+def analyze_ir(audio_data, sample_rate, display_duration, fft_duration, fft_window_size, window_function='boxcar'):
+    """
+    Analyze impulse response and return waveform and FFT data
+    (Legacy wrapper for backward compatibility - calls new functions)
+
+    Args:
+        audio_data: Audio samples
+        sample_rate: Sample rate in Hz
+        display_duration: Duration to display in waveform plot (seconds)
+        fft_duration: Duration to use for FFT analysis (seconds)
+        fft_window_size: FFT window size
+        window_function: Window function name for FFT
+
+    Returns:
+        tuple: (time_array, waveform, frequencies, magnitude_db, fft_info)
+    """
+    time_array, waveform = calculate_waveform(audio_data, sample_rate, display_duration)
+    frequencies, magnitude_db, fft_info = calculate_fft(audio_data, sample_rate, fft_duration, fft_window_size, window_function)
     return time_array, waveform, frequencies, magnitude_db, fft_info
 
 def plot_waveforms(waveform_data, filenames, display_duration_ms, dpi=400, colors=None,
@@ -533,10 +573,8 @@ analyze_button = st.button("Start Analysis", type="primary", disabled=(not uploa
 if analyze_button and uploaded_files:
     st.success(f"Processing {len(uploaded_files)} file(s)...")
 
-    # Store analysis results
-    waveform_data = []
-    fft_data = []
-    filenames = []
+    # Store raw audio data for dynamic processing
+    audio_files_data = []
 
     # Progress bar
     progress_bar = st.progress(0)
@@ -546,23 +584,19 @@ if analyze_button and uploaded_files:
             # Read WAV file
             sample_rate, audio_data = wavfile.read(io.BytesIO(uploaded_file.read()))
 
-            # Analyze
-            time_array, waveform, frequencies, magnitude_db, fft_info = analyze_ir(
-                audio_data,
-                sample_rate,
-                display_duration,
-                fft_duration,
-                fft_window_size,
-                window_func_name
-            )
+            # Ensure mono
+            if len(audio_data.shape) > 1:
+                audio_data = np.mean(audio_data, axis=1)
 
-            waveform_data.append((time_array, waveform))
-            fft_data.append((frequencies, magnitude_db))
-            filenames.append(uploaded_file.name)
+            # Normalize
+            audio_data = audio_data / np.max(np.abs(audio_data))
 
-            # Store FFT info for first file (all files should have same sample rate)
-            if idx == 0:
-                fft_info_data = fft_info
+            # Store raw audio data
+            audio_files_data.append({
+                'audio_data': audio_data,
+                'sample_rate': sample_rate,
+                'filename': uploaded_file.name
+            })
 
             # Update progress
             progress_bar.progress((idx + 1) / len(uploaded_files))
@@ -573,26 +607,23 @@ if analyze_button and uploaded_files:
     # Clear progress bar
     progress_bar.empty()
 
-    # Store results in session state (only raw analysis data, not display settings)
-    if waveform_data:
+    # Store raw audio data in session state for dynamic processing
+    if audio_files_data:
         st.session_state.analysis_results = {
-            'waveform_data': waveform_data,
-            'fft_data': fft_data,
-            'filenames': filenames,
-            'fft_info': fft_info_data
+            'audio_files_data': audio_files_data
         }
         st.success("Analysis complete!")
     else:
         st.warning("No files were successfully processed.")
 
 # Display results if available in session state
-# Note: Display settings (duration, smoothing, y-axis, colors) use current sidebar values
-# This allows users to adjust visualization without re-analyzing
+# Note: All calculations are dynamic based on current sidebar settings
 if st.session_state.analysis_results is not None:
     results = st.session_state.analysis_results
-    waveform_data = results['waveform_data']
-    fft_data = results['fft_data']
-    filenames = results['filenames']
+    audio_files_data = results['audio_files_data']
+
+    # Get filenames for filtering
+    filenames = [file_data['filename'] for file_data in audio_files_data]
 
     # Filter data based on checkbox selection
     selected_indices = [i for i, name in enumerate(filenames)
@@ -601,18 +632,27 @@ if st.session_state.analysis_results is not None:
     if not selected_indices:
         st.warning("⚠️ No files selected for display. Please check at least one file.")
     else:
-        filtered_waveform_data = [waveform_data[i] for i in selected_indices]
-        filtered_fft_data = [fft_data[i] for i in selected_indices]
+        filtered_audio_files = [audio_files_data[i] for i in selected_indices]
         filtered_filenames = [filenames[i] for i in selected_indices]
 
         # Generate colors based on selected scheme
         num_files = len(filtered_filenames)
         plot_colors = generate_colors(num_files, color_scheme_name)
 
+        # Dynamically calculate waveform data using current display duration
+        waveform_data = []
+        for file_data in filtered_audio_files:
+            time_array, waveform = calculate_waveform(
+                file_data['audio_data'],
+                file_data['sample_rate'],
+                display_duration
+            )
+            waveform_data.append((time_array, waveform))
+
         # Display waveforms in a single graph
         st.header("Waveform (Time Domain)")
         st.info(f"📊 Displaying {num_files} of {len(filenames)} file(s)")
-        fig = plot_waveforms(filtered_waveform_data, filtered_filenames, display_duration_ms, graph_dpi,
+        fig = plot_waveforms(waveform_data, filtered_filenames, display_duration_ms, graph_dpi,
                             colors=plot_colors, text_size=text_size, text_color=text_color,
                             grid_linewidth=grid_linewidth, grid_alpha=grid_alpha, grid_color=grid_color)
         st.pyplot(fig)
@@ -636,42 +676,45 @@ if st.session_state.analysis_results is not None:
         # Display FFT analysis
         st.header("FFT Analysis (Frequency Response)")
 
-        # Create combined FFT plot with filtered data
-        all_frequencies = [filtered_fft_data[i][0] for i in range(len(filtered_fft_data))]
-        all_magnitudes = [filtered_fft_data[i][1] for i in range(len(filtered_fft_data))]
+        # Dynamically calculate FFT data using current settings
+        all_frequencies = []
+        all_magnitudes = []
+        sample_rate = None  # Will be set from first file
 
+        for file_data in filtered_audio_files:
+            frequencies, magnitude_db, fft_info = calculate_fft(
+                file_data['audio_data'],
+                file_data['sample_rate'],
+                fft_duration,
+                fft_window_size,
+                window_func_name
+            )
+            all_frequencies.append(frequencies)
+            all_magnitudes.append(magnitude_db)
+
+            # Get sample rate from first file for FFT info display
+            if sample_rate is None:
+                sample_rate = fft_info['sample_rate']
+                current_fft_info = fft_info
+
+        # Create combined FFT plot with dynamically calculated data
         fig = plot_fft(all_frequencies, all_magnitudes, filtered_filenames, smoothing, graph_dpi,
                       y_min=fft_y_min, colors=plot_colors, text_size=text_size, text_color=text_color,
                       grid_linewidth=grid_linewidth, grid_alpha=grid_alpha, grid_color=grid_color)
         st.pyplot(fig)
 
-        # Display FFT information (dynamically calculated from current settings)
-        fft_info = results['fft_info']
-        sample_rate = fft_info['sample_rate']  # Get from stored data
-
-        # Calculate current FFT parameters based on sidebar settings (same logic as analyze_ir)
-        # Target samples from FFT duration (no clipping by file length)
-        current_target_fft_samples = int(fft_duration * sample_rate)
-
-        # Calculate actual FFT size based on TARGET duration
-        fft_size_from_duration = 2 ** int(np.ceil(np.log2(current_target_fft_samples)))
-        current_actual_fft_size = max(fft_size_from_duration, fft_window_size)
-
-        # Frequency resolution based on actual FFT size
-        current_freq_resolution = sample_rate / current_actual_fft_size
-        nyquist_freq = sample_rate / 2
-
+        # Display FFT information from dynamically calculated data
         st.markdown("### FFT Analysis Information")
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("Sample Rate", f"{sample_rate:,.0f} Hz")
-            st.metric("FFT Size", f"{current_actual_fft_size:,}")
+            st.metric("Sample Rate", f"{current_fft_info['sample_rate']:,.0f} Hz")
+            st.metric("FFT Size", f"{current_fft_info['fft_size']:,}")
         with col2:
-            st.metric("Target FFT Samples", f"{current_target_fft_samples:,}")
+            st.metric("Target FFT Samples", f"{current_fft_info['target_fft_samples']:,}")
             st.metric("FFT Duration", f"{fft_duration_ms:.1f} ms")
         with col3:
-            st.metric("Frequency Resolution", f"{current_freq_resolution:.2f} Hz")
-            st.metric("Nyquist Frequency", f"{nyquist_freq:,.0f} Hz")
+            st.metric("Frequency Resolution", f"{current_fft_info['frequency_resolution']:.2f} Hz")
+            st.metric("Nyquist Frequency", f"{current_fft_info['nyquist_frequency']:,.0f} Hz")
 
         # Save high-resolution image to buffer for download
         buf_fft = io.BytesIO()
