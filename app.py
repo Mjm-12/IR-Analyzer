@@ -634,19 +634,26 @@ if st.session_state.analysis_results is not None:
                       grid_linewidth=grid_linewidth, grid_alpha=grid_alpha, grid_color=grid_color)
         st.pyplot(fig)
 
-        # Display FFT information
+        # Display FFT information (dynamically calculated from current settings)
         fft_info = results['fft_info']
+        sample_rate = fft_info['sample_rate']  # Get from stored data
+
+        # Calculate current FFT parameters based on sidebar settings
+        current_fft_samples = int(fft_duration * sample_rate)
+        current_freq_resolution = sample_rate / fft_window_size
+        nyquist_freq = sample_rate / 2
+
         st.markdown("### FFT Analysis Information")
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("Sample Rate", f"{fft_info['sample_rate']:,.0f} Hz")
-            st.metric("FFT Size", f"{fft_info['fft_size']:,}")
+            st.metric("Sample Rate", f"{sample_rate:,.0f} Hz")
+            st.metric("FFT Size", f"{fft_window_size:,}")
         with col2:
-            st.metric("FFT Samples", f"{fft_info['fft_samples']:,}")
-            st.metric("FFT Duration", f"{fft_info['fft_duration']*1000:.1f} ms")
+            st.metric("FFT Samples", f"{current_fft_samples:,}")
+            st.metric("FFT Duration", f"{fft_duration_ms:.1f} ms")
         with col3:
-            st.metric("Frequency Resolution", f"{fft_info['frequency_resolution']:.2f} Hz")
-            st.metric("Nyquist Frequency", f"{fft_info['nyquist_frequency']:,.0f} Hz")
+            st.metric("Frequency Resolution", f"{current_freq_resolution:.2f} Hz")
+            st.metric("Nyquist Frequency", f"{nyquist_freq:,.0f} Hz")
 
         # Save high-resolution image to buffer for download
         buf_fft = io.BytesIO()
