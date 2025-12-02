@@ -366,7 +366,7 @@ def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0, dpi=400, 
     return fig
 
 # Main App
-st.title("Guitar IR Analyzer")
+st.title("Guitar IR Analyzer V2.0")
 st.markdown("Guitar Cabinet Impulse Response Analysis Tool")
 st.markdown("Upload multiple WAV files to analyze and visualize waveforms and FFT results.")
 
