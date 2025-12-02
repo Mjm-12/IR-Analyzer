@@ -51,14 +51,17 @@ def analyze_ir(audio_data, sample_rate, display_duration, fft_duration, fft_wind
     time_array = np.arange(samples_to_display) / sample_rate * 1000  # Convert to ms
     waveform = audio_data[:samples_to_display]
 
-    # Calculate samples for FFT analysis
-    samples_for_fft = int(fft_duration * sample_rate)
-    samples_for_fft = min(samples_for_fft, len(audio_data))
-    fft_data = audio_data[:samples_for_fft]
+    # Calculate target samples from FFT duration (no clipping by file length)
+    target_fft_samples = int(fft_duration * sample_rate)
 
-    # Determine actual FFT size based on FFT duration
+    # Actual data samples to read (limited by file length)
+    actual_data_samples = min(target_fft_samples, len(audio_data))
+    fft_data = audio_data[:actual_data_samples]
+
+    # Determine FFT size based on TARGET duration (not clipped)
+    # This allows zero-padding for short files to achieve desired frequency resolution
     # Round up to next power of 2 for efficiency
-    fft_size_from_duration = 2 ** int(np.ceil(np.log2(samples_for_fft)))
+    fft_size_from_duration = 2 ** int(np.ceil(np.log2(target_fft_samples)))
 
     # Use the larger of duration-based size and user-specified minimum window size
     actual_fft_size = max(fft_size_from_duration, fft_window_size)
@@ -102,7 +105,8 @@ def analyze_ir(audio_data, sample_rate, display_duration, fft_duration, fft_wind
     fft_info = {
         'sample_rate': sample_rate,
         'fft_size': actual_fft_size,
-        'fft_samples': samples_for_fft,
+        'target_fft_samples': target_fft_samples,  # Target samples based on duration
+        'actual_data_samples': actual_data_samples,  # Actual samples from file
         'fft_duration': fft_duration,
         'frequency_resolution': sample_rate / actual_fft_size,
         'nyquist_frequency': sample_rate / 2
@@ -645,11 +649,12 @@ if st.session_state.analysis_results is not None:
         fft_info = results['fft_info']
         sample_rate = fft_info['sample_rate']  # Get from stored data
 
-        # Calculate current FFT parameters based on sidebar settings
-        current_fft_samples = int(fft_duration * sample_rate)
+        # Calculate current FFT parameters based on sidebar settings (same logic as analyze_ir)
+        # Target samples from FFT duration (no clipping by file length)
+        current_target_fft_samples = int(fft_duration * sample_rate)
 
-        # Calculate actual FFT size (same logic as in analyze_ir)
-        fft_size_from_duration = 2 ** int(np.ceil(np.log2(current_fft_samples)))
+        # Calculate actual FFT size based on TARGET duration
+        fft_size_from_duration = 2 ** int(np.ceil(np.log2(current_target_fft_samples)))
         current_actual_fft_size = max(fft_size_from_duration, fft_window_size)
 
         # Frequency resolution based on actual FFT size
@@ -662,7 +667,7 @@ if st.session_state.analysis_results is not None:
             st.metric("Sample Rate", f"{sample_rate:,.0f} Hz")
             st.metric("FFT Size", f"{current_actual_fft_size:,}")
         with col2:
-            st.metric("FFT Samples", f"{current_fft_samples:,}")
+            st.metric("Target FFT Samples", f"{current_target_fft_samples:,}")
             st.metric("FFT Duration", f"{fft_duration_ms:.1f} ms")
         with col3:
             st.metric("Frequency Resolution", f"{current_freq_resolution:.2f} Hz")
