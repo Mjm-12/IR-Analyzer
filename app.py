@@ -56,6 +56,13 @@ def analyze_ir(audio_data, sample_rate, display_duration, fft_duration, fft_wind
     samples_for_fft = min(samples_for_fft, len(audio_data))
     fft_data = audio_data[:samples_for_fft]
 
+    # Determine actual FFT size based on FFT duration
+    # Round up to next power of 2 for efficiency
+    fft_size_from_duration = 2 ** int(np.ceil(np.log2(samples_for_fft)))
+
+    # Use the larger of duration-based size and user-specified minimum window size
+    actual_fft_size = max(fft_size_from_duration, fft_window_size)
+
     # Apply window function for FFT
     if window_function == 'boxcar':
         window = signal.windows.boxcar(len(fft_data))
@@ -81,23 +88,23 @@ def analyze_ir(audio_data, sample_rate, display_duration, fft_duration, fft_wind
     # Apply window to FFT data
     windowed_data = fft_data * window
 
-    # FFT Analysis
-    fft_result = np.fft.rfft(windowed_data, n=fft_window_size)
+    # FFT Analysis with actual FFT size
+    fft_result = np.fft.rfft(windowed_data, n=actual_fft_size)
     magnitude = np.abs(fft_result)
 
     # Convert to dB (avoid log of zero)
     magnitude_db = 20 * np.log10(magnitude + 1e-10)
 
-    # Frequency array
-    frequencies = np.fft.rfftfreq(fft_window_size, 1/sample_rate)
+    # Frequency array based on actual FFT size
+    frequencies = np.fft.rfftfreq(actual_fft_size, 1/sample_rate)
 
     # FFT information
     fft_info = {
         'sample_rate': sample_rate,
-        'fft_size': fft_window_size,
+        'fft_size': actual_fft_size,
         'fft_samples': samples_for_fft,
         'fft_duration': fft_duration,
-        'frequency_resolution': sample_rate / fft_window_size,
+        'frequency_resolution': sample_rate / actual_fft_size,
         'nyquist_frequency': sample_rate / 2
     }
 
@@ -348,10 +355,10 @@ fft_duration = fft_duration_ms / 1000.0
 
 # FFT settings
 fft_window_size = st.sidebar.selectbox(
-    "FFT Window Size",
+    "FFT Window Size (Minimum)",
     options=[2048, 4096, 8192, 16384, 32768, 65536],
     index=3,
-    help="Larger window size provides better frequency resolution"
+    help="Minimum FFT size. Actual FFT size is determined by FFT Analysis Duration (rounded to next power of 2). Larger values ensure minimum frequency resolution."
 )
 
 # Window function selection
@@ -640,14 +647,20 @@ if st.session_state.analysis_results is not None:
 
         # Calculate current FFT parameters based on sidebar settings
         current_fft_samples = int(fft_duration * sample_rate)
-        current_freq_resolution = sample_rate / fft_window_size
+
+        # Calculate actual FFT size (same logic as in analyze_ir)
+        fft_size_from_duration = 2 ** int(np.ceil(np.log2(current_fft_samples)))
+        current_actual_fft_size = max(fft_size_from_duration, fft_window_size)
+
+        # Frequency resolution based on actual FFT size
+        current_freq_resolution = sample_rate / current_actual_fft_size
         nyquist_freq = sample_rate / 2
 
         st.markdown("### FFT Analysis Information")
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("Sample Rate", f"{sample_rate:,.0f} Hz")
-            st.metric("FFT Size", f"{fft_window_size:,}")
+            st.metric("FFT Size", f"{current_actual_fft_size:,}")
         with col2:
             st.metric("FFT Samples", f"{current_fft_samples:,}")
             st.metric("FFT Duration", f"{fft_duration_ms:.1f} ms")
