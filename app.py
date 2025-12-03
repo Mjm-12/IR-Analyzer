@@ -26,7 +26,7 @@ def calculate_waveform(audio_data, sample_rate, display_duration):
     Calculate waveform data for display
 
     Args:
-        audio_data: Audio samples
+        audio_data: Audio samples (raw, not normalized)
         sample_rate: Sample rate in Hz
         display_duration: Duration to display (seconds)
 
@@ -36,9 +36,6 @@ def calculate_waveform(audio_data, sample_rate, display_duration):
     # Ensure mono
     if len(audio_data.shape) > 1:
         audio_data = np.mean(audio_data, axis=1)
-
-    # Normalize
-    audio_data = audio_data / np.max(np.abs(audio_data))
 
     # Calculate samples to display
     samples_to_display = int(display_duration * sample_rate)
@@ -87,9 +84,6 @@ def calculate_fft(audio_data, sample_rate, fft_duration, fft_window_size, window
     # Ensure mono
     if len(audio_data.shape) > 1:
         audio_data = np.mean(audio_data, axis=1)
-
-    # Normalize
-    audio_data = audio_data / np.max(np.abs(audio_data))
 
     # Calculate target samples from FFT duration (no clipping by file length)
     target_fft_samples = int(fft_duration * sample_rate)
@@ -353,7 +347,7 @@ def apply_octave_smoothing(frequencies, magnitude_db, octave_fraction):
     return smoothed
 
 def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0, dpi=400, y_min=-40, y_max=5, colors=None,
-             text_size=10, text_color='#333333', grid_linewidth=0.8, grid_alpha=0.3, grid_color='#808080'):
+             text_size=10, text_color='#333333', grid_linewidth=0.8, grid_alpha=0.3, grid_color='#808080', normalize_mode='relative'):
     """
     Plot FFT frequency response with dark mode support
 
@@ -371,6 +365,7 @@ def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0, dpi=400, 
         grid_linewidth: Width of grid lines
         grid_alpha: Transparency of grid lines
         grid_color: Color of grid lines (hex)
+        normalize_mode: 'relative' or 'absolute' normalization mode
     """
     fig, ax = plt.subplots(figsize=(12, 6), dpi=dpi, constrained_layout=True)
 
@@ -380,14 +375,27 @@ def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0, dpi=400, 
                   (0.84, 0.15, 0.16, 0.8), (0.58, 0.40, 0.74, 0.8), (0.55, 0.34, 0.29, 0.8),
                   (0.89, 0.47, 0.76, 0.8), (0.50, 0.50, 0.50, 0.8)]
 
-    for idx, (freq, mag_db, filename) in enumerate(zip(frequencies, magnitude_db, filenames)):
-        # Apply octave smoothing if requested
+    # Apply smoothing first (before normalization)
+    smoothed_magnitudes = []
+    for freq, mag_db in zip(frequencies, magnitude_db):
         if octave_smoothing > 0:
             mag_db = apply_octave_smoothing(freq, mag_db, octave_smoothing)
+        smoothed_magnitudes.append(mag_db)
 
-        # Normalize each file to 0dB max
-        max_magnitude = np.max(mag_db)
-        mag_db_normalized = mag_db - max_magnitude
+    # Determine normalization offset
+    if normalize_mode == 'absolute':
+        # Find global maximum across all files
+        global_max = max(np.max(mag_db) for mag_db in smoothed_magnitudes)
+
+    # Plot each FFT
+    for idx, (freq, mag_db, filename) in enumerate(zip(frequencies, smoothed_magnitudes, filenames)):
+        if normalize_mode == 'relative':
+            # Normalize each file to its own 0dB max
+            max_magnitude = np.max(mag_db)
+            mag_db_normalized = mag_db - max_magnitude
+        else:  # absolute
+            # Normalize all files to global maximum
+            mag_db_normalized = mag_db - global_max
 
         color = colors[idx % len(colors)]
         ax.semilogx(freq, mag_db_normalized, label=filename, linewidth=1.2, color=color)
@@ -446,6 +454,14 @@ align_waveform_peaks = st.sidebar.checkbox(
     "Align Waveform Peaks",
     value=False,
     help="Align all waveforms by shifting them so their peak positions match the earliest peak. Useful for comparing impulse responses with different delays."
+)
+
+# Waveform normalization mode
+waveform_normalize_mode = st.sidebar.radio(
+    "Waveform Normalization Mode",
+    options=["Relative (per file)", "Absolute (global)"],
+    index=0,
+    help="Relative: normalize each waveform to its own maximum. Absolute: normalize all waveforms to the global maximum across all files."
 )
 
 # ==================== FFT Settings ====================
@@ -515,6 +531,14 @@ with st.sidebar.expander("Advanced Settings", expanded=False):
         options=["None", "1/48 Octave", "1/24 Octave", "1/12 Octave", "1/6 Octave", "1/3 Octave", "1 Octave"],
         index=0,  # Default to None for maximum speed and precision
         help="Apply fractional octave smoothing to FFT results"
+    )
+
+    # FFT normalization mode
+    fft_normalize_mode = st.radio(
+        "FFT Normalization Mode",
+        options=["Relative (per file)", "Absolute (global)"],
+        index=0,
+        help="Relative: normalize each FFT to its own maximum (0dB). Absolute: normalize all FFTs to the global maximum across all files."
     )
 
 # Map display names to function names
@@ -709,10 +733,7 @@ if analyze_button and uploaded_files:
             if len(audio_data.shape) > 1:
                 audio_data = np.mean(audio_data, axis=1)
 
-            # Normalize
-            audio_data = audio_data / np.max(np.abs(audio_data))
-
-            # Store raw audio data
+            # Store raw audio data (without normalization to preserve relative levels)
             audio_files_data.append({
                 'audio_data': audio_data,
                 'sample_rate': sample_rate,
@@ -792,6 +813,31 @@ if st.session_state.analysis_results is not None:
 
             waveform_data = aligned_waveform_data
 
+        # Apply normalization based on selected mode
+        if len(waveform_data) > 0:
+            normalized_waveform_data = []
+
+            if waveform_normalize_mode == "Absolute (global)":
+                # Find global maximum across all waveforms
+                global_max = max(np.max(np.abs(waveform)) for _, waveform in waveform_data)
+                # Prevent division by zero
+                global_max = max(global_max, 1e-10)
+
+                # Normalize all waveforms to global maximum
+                for time_array, waveform in waveform_data:
+                    normalized_waveform = waveform / global_max
+                    normalized_waveform_data.append((time_array, normalized_waveform))
+            else:  # Relative (per file)
+                # Normalize each waveform to its own maximum
+                for time_array, waveform in waveform_data:
+                    max_value = np.max(np.abs(waveform))
+                    # Prevent division by zero
+                    max_value = max(max_value, 1e-10)
+                    normalized_waveform = waveform / max_value
+                    normalized_waveform_data.append((time_array, normalized_waveform))
+
+            waveform_data = normalized_waveform_data
+
         # Display waveforms in a single graph
         st.header("Waveform (Time Domain)")
         st.info(f"📊 Displaying {num_files} of {len(filenames)} file(s)")
@@ -841,10 +887,14 @@ if st.session_state.analysis_results is not None:
                 sample_rate = fft_info['sample_rate']
                 current_fft_info = fft_info
 
+        # Determine FFT normalization mode
+        fft_norm_mode = 'absolute' if fft_normalize_mode == "Absolute (global)" else 'relative'
+
         # Create combined FFT plot with dynamically calculated data
         fig = plot_fft(all_frequencies, all_magnitudes, filtered_filenames, smoothing, graph_dpi,
                       y_min=fft_y_min, colors=plot_colors, text_size=text_size, text_color=text_color,
-                      grid_linewidth=grid_linewidth, grid_alpha=grid_alpha, grid_color=grid_color)
+                      grid_linewidth=grid_linewidth, grid_alpha=grid_alpha, grid_color=grid_color,
+                      normalize_mode=fft_norm_mode)
         st.pyplot(fig)
 
         # Display FFT information from dynamically calculated data
