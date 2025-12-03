@@ -60,9 +60,12 @@ def is_bell_shaped_window(window_function):
     Returns:
         bool: True if window is bell-shaped
     """
-    bell_shaped = ['hann', 'hamming', 'blackman', 'bartlett', 'blackmanharris', 'flattop', 'tukey']
+    bell_shaped = ['hann', 'hamming', 'blackman', 'bartlett', 'blackmanharris', 'flattop']
     # Check if it's a Kaiser window variant (kaiser_5.0, kaiser_8.6, kaiser_14.0)
     if window_function.startswith('kaiser'):
+        return True
+    # Check if it's a Tukey window variant (tukey_0.1, tukey_0.5, tukey_0.9)
+    if window_function.startswith('tukey'):
         return True
     return window_function in bell_shaped
 
@@ -147,8 +150,12 @@ def calculate_fft(audio_data, sample_rate, fft_duration, fft_window_size, window
         window = signal.windows.blackmanharris(len(fft_data))
     elif window_function == 'flattop':
         window = signal.windows.flattop(len(fft_data))
-    elif window_function == 'tukey':
-        window = signal.windows.tukey(len(fft_data))
+    elif window_function == 'tukey_0.1':
+        window = signal.windows.tukey(len(fft_data), alpha=0.1)
+    elif window_function == 'tukey_0.5':
+        window = signal.windows.tukey(len(fft_data), alpha=0.5)
+    elif window_function == 'tukey_0.9':
+        window = signal.windows.tukey(len(fft_data), alpha=0.9)
     else:
         window = signal.windows.boxcar(len(fft_data))
 
@@ -474,10 +481,12 @@ with st.sidebar.expander("Advanced Settings", expanded=False):
             "Kaiser β=14.0",
             "Blackman-Harris",
             "Flat Top",
-            "Tukey"
+            "Tukey α=0.1",
+            "Tukey α=0.5",
+            "Tukey α=0.9"
         ],
         index=1,  # Default to Hann for balanced speed and accuracy
-        help="Window function applied before FFT analysis. Kaiser β controls sidelobe suppression (higher β = lower sidelobes but wider mainlobe)"
+        help="Window function applied before FFT analysis. Kaiser β controls sidelobe suppression (higher β = lower sidelobes but wider mainlobe). Tukey α controls taper fraction (α=0: rectangular, α=1: Hann)"
     )
 
     # Data shift mode selection (for bell-shaped windows)
@@ -513,7 +522,9 @@ window_map = {
     "Kaiser β=14.0": "kaiser_14.0",
     "Blackman-Harris": "blackmanharris",
     "Flat Top": "flattop",
-    "Tukey": "tukey"
+    "Tukey α=0.1": "tukey_0.1",
+    "Tukey α=0.5": "tukey_0.5",
+    "Tukey α=0.9": "tukey_0.9"
 }
 window_func_name = window_map[window_function]
 
