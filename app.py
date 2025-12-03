@@ -7,7 +7,7 @@ import io
 
 # Page configuration
 st.set_page_config(
-    page_title="Guitar IR Analyzer V2.1",
+    page_title="Guitar IR Analyzer V2.2",
     page_icon="🔈",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -421,7 +421,7 @@ def plot_fft(frequencies, magnitude_db, filenames, octave_smoothing=0, dpi=400, 
     return fig
 
 # Main App
-st.title("Guitar IR Analyzer V2.1")
+st.title("Guitar IR Analyzer V2.2")
 st.markdown("Guitar Cabinet Impulse Response Analysis Tool")
 st.markdown("Upload multiple WAV files to analyze and visualize waveforms and FFT results.")
 
