@@ -60,7 +60,7 @@ def is_bell_shaped_window(window_function):
     Returns:
         bool: True if window is bell-shaped
     """
-    bell_shaped = ['hann', 'hamming', 'blackman', 'kaiser', 'blackmanharris', 'flattop', 'tukey']
+    bell_shaped = ['hann', 'hamming', 'blackman', 'bartlett', 'kaiser', 'blackmanharris', 'flattop', 'tukey']
     return window_function in bell_shaped
 
 def calculate_fft(audio_data, sample_rate, fft_duration, fft_window_size, window_function='boxcar', data_shift_mode='auto'):
