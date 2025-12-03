@@ -50,7 +50,20 @@ def calculate_waveform(audio_data, sample_rate, display_duration):
 
     return time_array, waveform
 
-def calculate_fft(audio_data, sample_rate, fft_duration, fft_window_size, window_function='boxcar'):
+def is_bell_shaped_window(window_function):
+    """
+    Determine if a window function is bell-shaped (peak at center)
+
+    Args:
+        window_function: Window function name
+
+    Returns:
+        bool: True if window is bell-shaped
+    """
+    bell_shaped = ['hann', 'hamming', 'blackman', 'kaiser', 'blackmanharris', 'flattop', 'tukey']
+    return window_function in bell_shaped
+
+def calculate_fft(audio_data, sample_rate, fft_duration, fft_window_size, window_function='boxcar', data_shift_mode='auto'):
     """
     Calculate FFT data for frequency analysis
 
@@ -60,6 +73,7 @@ def calculate_fft(audio_data, sample_rate, fft_duration, fft_window_size, window
         fft_duration: Duration to use for FFT analysis (seconds)
         fft_window_size: Minimum FFT window size
         window_function: Window function name for FFT
+        data_shift_mode: Data shifting mode ('none', 'circular', 'peak_center', 'auto')
 
     Returns:
         tuple: (frequencies, magnitude_db, fft_info)
@@ -85,6 +99,29 @@ def calculate_fft(audio_data, sample_rate, fft_duration, fft_window_size, window
 
     # Use the larger of duration-based size and user-specified minimum window size
     actual_fft_size = max(fft_size_from_duration, fft_window_size)
+
+    # Determine if data shifting is needed
+    apply_shift = False
+    if data_shift_mode == 'auto':
+        # Automatically shift for bell-shaped windows
+        apply_shift = is_bell_shaped_window(window_function)
+    elif data_shift_mode == 'circular' or data_shift_mode == 'peak_center':
+        apply_shift = True
+    # else: data_shift_mode == 'none', apply_shift = False
+
+    # Calculate shift amount if needed
+    shift_amount = 0
+    if apply_shift:
+        if data_shift_mode == 'peak_center':
+            # Find peak and center it
+            peak_index = np.argmax(np.abs(fft_data))
+            shift_amount = len(fft_data) // 2 - peak_index
+        else:
+            # Circular shift: move beginning to center
+            shift_amount = len(fft_data) // 2
+
+        # Apply circular shift
+        fft_data = np.roll(fft_data, shift_amount)
 
     # Apply window function for FFT
     if window_function == 'boxcar':
@@ -129,12 +166,15 @@ def calculate_fft(audio_data, sample_rate, fft_duration, fft_window_size, window
         'actual_data_samples': actual_data_samples,  # Actual samples from file
         'fft_duration': fft_duration,
         'frequency_resolution': sample_rate / actual_fft_size,
-        'nyquist_frequency': sample_rate / 2
+        'nyquist_frequency': sample_rate / 2,
+        'data_shift_applied': apply_shift,
+        'shift_amount': shift_amount,
+        'shift_mode': data_shift_mode
     }
 
     return frequencies, magnitude_db, fft_info
 
-def analyze_ir(audio_data, sample_rate, display_duration, fft_duration, fft_window_size, window_function='boxcar'):
+def analyze_ir(audio_data, sample_rate, display_duration, fft_duration, fft_window_size, window_function='boxcar', data_shift_mode='auto'):
     """
     Analyze impulse response and return waveform and FFT data
     (Legacy wrapper for backward compatibility - calls new functions)
@@ -146,12 +186,13 @@ def analyze_ir(audio_data, sample_rate, display_duration, fft_duration, fft_wind
         fft_duration: Duration to use for FFT analysis (seconds)
         fft_window_size: FFT window size
         window_function: Window function name for FFT
+        data_shift_mode: Data shifting mode for bell-shaped windows
 
     Returns:
         tuple: (time_array, waveform, frequencies, magnitude_db, fft_info)
     """
     time_array, waveform = calculate_waveform(audio_data, sample_rate, display_duration)
-    frequencies, magnitude_db, fft_info = calculate_fft(audio_data, sample_rate, fft_duration, fft_window_size, window_function)
+    frequencies, magnitude_db, fft_info = calculate_fft(audio_data, sample_rate, fft_duration, fft_window_size, window_function, data_shift_mode)
     return time_array, waveform, frequencies, magnitude_db, fft_info
 
 def plot_waveforms(waveform_data, filenames, display_duration_ms, dpi=400, colors=None,
@@ -436,6 +477,27 @@ window_map = {
 }
 window_func_name = window_map[window_function]
 
+# Data shift mode selection (for bell-shaped windows)
+data_shift_mode = st.sidebar.selectbox(
+    "Data Shift Mode (for bell-shaped windows)",
+    options=[
+        "Auto (shift bell-shaped windows only)",
+        "None (no shift)",
+        "Circular Shift (move start to center)",
+        "Peak Centering (auto-detect and center peak)"
+    ],
+    index=0,
+    help="Shift data before applying window to improve SNR for bell-shaped windows (Kaiser, Blackman, etc.)"
+)
+# Map display names to mode names
+shift_mode_map = {
+    "Auto (shift bell-shaped windows only)": "auto",
+    "None (no shift)": "none",
+    "Circular Shift (move start to center)": "circular",
+    "Peak Centering (auto-detect and center peak)": "peak_center"
+}
+shift_mode_name = shift_mode_map[data_shift_mode]
+
 # Octave smoothing
 smoothing_options = {
     "None": 0,
@@ -687,7 +749,8 @@ if st.session_state.analysis_results is not None:
                 file_data['sample_rate'],
                 fft_duration,
                 fft_window_size,
-                window_func_name
+                window_func_name,
+                shift_mode_name
             )
             all_frequencies.append(frequencies)
             all_magnitudes.append(magnitude_db)
@@ -715,6 +778,14 @@ if st.session_state.analysis_results is not None:
         with col3:
             st.metric("Frequency Resolution", f"{current_fft_info['frequency_resolution']:.2f} Hz")
             st.metric("Nyquist Frequency", f"{current_fft_info['nyquist_frequency']:,.0f} Hz")
+
+        # Display data shift information
+        if current_fft_info['data_shift_applied']:
+            st.info(f"✓ Data Shift Applied: {current_fft_info['shift_mode']} mode | "
+                   f"Shift Amount: {current_fft_info['shift_amount']} samples | "
+                   f"This improves SNR for bell-shaped windows by centering the impulse.")
+        else:
+            st.info(f"✗ No Data Shift Applied (Mode: {current_fft_info['shift_mode']})")
 
         # Save high-resolution image to buffer for download
         buf_fft = io.BytesIO()
