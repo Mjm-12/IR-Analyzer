@@ -590,6 +590,25 @@ with st.sidebar.expander("Grid Settings", expanded=False):
 st.sidebar.markdown("---")
 st.sidebar.header("Export Settings")
 
+# Export format selection
+export_format = st.sidebar.selectbox(
+    "Export Format",
+    options=["PNG", "JPG", "SVG", "TIF", "PDF"],
+    index=0,  # Default to PNG
+    help="File format for downloaded images. PNG: lossless with transparency, JPG: compressed (smaller files), SVG: vector (scalable), TIF: high quality, PDF: document format"
+)
+
+# Map format to file extension and MIME type
+format_map = {
+    "PNG": {"ext": "png", "mime": "image/png"},
+    "JPG": {"ext": "jpg", "mime": "image/jpeg"},
+    "SVG": {"ext": "svg", "mime": "image/svg+xml"},
+    "TIF": {"ext": "tiff", "mime": "image/tiff"},
+    "PDF": {"ext": "pdf", "mime": "application/pdf"}
+}
+export_ext = format_map[export_format]["ext"]
+export_mime = format_map[export_format]["mime"]
+
 # Graph resolution (DPI) for export
 graph_dpi = st.sidebar.selectbox(
     "Export Image Resolution (DPI)",
@@ -732,16 +751,16 @@ if st.session_state.analysis_results is not None:
 
         # Save high-resolution image to buffer for download
         buf = io.BytesIO()
-        fig.savefig(buf, format='png', dpi=graph_dpi, bbox_inches='tight')
+        fig.savefig(buf, format=export_ext, dpi=graph_dpi, bbox_inches='tight')
         buf.seek(0)
 
         # Download button for high-resolution image
         st.download_button(
-            label="📥 Download High-Resolution Waveform (PNG)",
+            label=f"📥 Download High-Resolution Waveform ({export_format})",
             data=buf,
-            file_name=f"waveform_{graph_dpi}dpi.png",
-            mime="image/png",
-            help=f"Download waveform plot at {graph_dpi} DPI"
+            file_name=f"waveform_{graph_dpi}dpi.{export_ext}",
+            mime=export_mime,
+            help=f"Download waveform plot at {graph_dpi} DPI in {export_format} format"
         )
 
         plt.close(fig)
@@ -800,16 +819,16 @@ if st.session_state.analysis_results is not None:
 
         # Save high-resolution image to buffer for download
         buf_fft = io.BytesIO()
-        fig.savefig(buf_fft, format='png', dpi=graph_dpi, bbox_inches='tight')
+        fig.savefig(buf_fft, format=export_ext, dpi=graph_dpi, bbox_inches='tight')
         buf_fft.seek(0)
 
         # Download button for high-resolution image
         st.download_button(
-            label="📥 Download High-Resolution FFT Plot (PNG)",
+            label=f"📥 Download High-Resolution FFT Plot ({export_format})",
             data=buf_fft,
-            file_name=f"fft_plot_{graph_dpi}dpi.png",
-            mime="image/png",
-            help=f"Download FFT plot at {graph_dpi} DPI"
+            file_name=f"fft_plot_{graph_dpi}dpi.{export_ext}",
+            mime=export_mime,
+            help=f"Download FFT plot at {graph_dpi} DPI in {export_format} format"
         )
 
         plt.close(fig)
