@@ -26,7 +26,7 @@ def calculate_waveform(audio_data, sample_rate, display_duration):
     Calculate waveform data for display
 
     Args:
-        audio_data: Audio samples
+        audio_data: Audio samples (raw, not normalized)
         sample_rate: Sample rate in Hz
         display_duration: Duration to display (seconds)
 
@@ -36,9 +36,6 @@ def calculate_waveform(audio_data, sample_rate, display_duration):
     # Ensure mono
     if len(audio_data.shape) > 1:
         audio_data = np.mean(audio_data, axis=1)
-
-    # Normalize
-    audio_data = audio_data / np.max(np.abs(audio_data))
 
     # Calculate samples to display
     samples_to_display = int(display_duration * sample_rate)
@@ -87,9 +84,6 @@ def calculate_fft(audio_data, sample_rate, fft_duration, fft_window_size, window
     # Ensure mono
     if len(audio_data.shape) > 1:
         audio_data = np.mean(audio_data, axis=1)
-
-    # Normalize
-    audio_data = audio_data / np.max(np.abs(audio_data))
 
     # Calculate target samples from FFT duration (no clipping by file length)
     target_fft_samples = int(fft_duration * sample_rate)
@@ -739,10 +733,7 @@ if analyze_button and uploaded_files:
             if len(audio_data.shape) > 1:
                 audio_data = np.mean(audio_data, axis=1)
 
-            # Normalize
-            audio_data = audio_data / np.max(np.abs(audio_data))
-
-            # Store raw audio data
+            # Store raw audio data (without normalization to preserve relative levels)
             audio_files_data.append({
                 'audio_data': audio_data,
                 'sample_rate': sample_rate,
@@ -822,18 +813,30 @@ if st.session_state.analysis_results is not None:
 
             waveform_data = aligned_waveform_data
 
-        # Apply absolute normalization if requested
-        if waveform_normalize_mode == "Absolute (global)" and len(waveform_data) > 0:
-            # Find global maximum across all waveforms
-            global_max = max(np.max(np.abs(waveform)) for _, waveform in waveform_data)
+        # Apply normalization based on selected mode
+        if len(waveform_data) > 0:
+            normalized_waveform_data = []
 
-            # Re-normalize all waveforms to global maximum
-            renormalized_waveform_data = []
-            for time_array, waveform in waveform_data:
-                renormalized_waveform = waveform / global_max
-                renormalized_waveform_data.append((time_array, renormalized_waveform))
+            if waveform_normalize_mode == "Absolute (global)":
+                # Find global maximum across all waveforms
+                global_max = max(np.max(np.abs(waveform)) for _, waveform in waveform_data)
+                # Prevent division by zero
+                global_max = max(global_max, 1e-10)
 
-            waveform_data = renormalized_waveform_data
+                # Normalize all waveforms to global maximum
+                for time_array, waveform in waveform_data:
+                    normalized_waveform = waveform / global_max
+                    normalized_waveform_data.append((time_array, normalized_waveform))
+            else:  # Relative (per file)
+                # Normalize each waveform to its own maximum
+                for time_array, waveform in waveform_data:
+                    max_value = np.max(np.abs(waveform))
+                    # Prevent division by zero
+                    max_value = max(max_value, 1e-10)
+                    normalized_waveform = waveform / max_value
+                    normalized_waveform_data.append((time_array, normalized_waveform))
+
+            waveform_data = normalized_waveform_data
 
         # Display waveforms in a single graph
         st.header("Waveform (Time Domain)")
