@@ -441,6 +441,13 @@ display_duration_ms = st.sidebar.slider(
 # Convert to seconds for processing
 display_duration = display_duration_ms / 1000.0
 
+# Align peaks option
+align_waveform_peaks = st.sidebar.checkbox(
+    "Align Waveform Peaks",
+    value=False,
+    help="Align all waveforms by shifting them so their peak positions match the earliest peak. Useful for comparing impulse responses with different delays."
+)
+
 # ==================== FFT Settings ====================
 st.sidebar.markdown("---")
 st.sidebar.header("FFT Settings")
@@ -762,6 +769,28 @@ if st.session_state.analysis_results is not None:
                 display_duration
             )
             waveform_data.append((time_array, waveform))
+
+        # Align waveform peaks if requested
+        if align_waveform_peaks and len(waveform_data) > 1:
+            # Find peak positions for each waveform
+            peak_positions = []
+            for time_array, waveform in waveform_data:
+                peak_idx = np.argmax(np.abs(waveform))
+                peak_time = time_array[peak_idx]
+                peak_positions.append(peak_time)
+
+            # Find the earliest peak position
+            min_peak_time = min(peak_positions)
+
+            # Shift all waveforms to align with the earliest peak
+            aligned_waveform_data = []
+            for (time_array, waveform), peak_time in zip(waveform_data, peak_positions):
+                time_shift = peak_time - min_peak_time
+                # Shift time array
+                shifted_time_array = time_array - time_shift
+                aligned_waveform_data.append((shifted_time_array, waveform))
+
+            waveform_data = aligned_waveform_data
 
         # Display waveforms in a single graph
         st.header("Waveform (Time Domain)")
