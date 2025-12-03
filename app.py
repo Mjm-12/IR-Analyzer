@@ -60,7 +60,10 @@ def is_bell_shaped_window(window_function):
     Returns:
         bool: True if window is bell-shaped
     """
-    bell_shaped = ['hann', 'hamming', 'blackman', 'bartlett', 'kaiser', 'blackmanharris', 'flattop', 'tukey']
+    bell_shaped = ['hann', 'hamming', 'blackman', 'bartlett', 'blackmanharris', 'flattop', 'tukey']
+    # Check if it's a Kaiser window variant (kaiser_5.0, kaiser_8.6, kaiser_14.0)
+    if window_function.startswith('kaiser'):
+        return True
     return window_function in bell_shaped
 
 def calculate_fft(audio_data, sample_rate, fft_duration, fft_window_size, window_function='boxcar', data_shift_mode='auto'):
@@ -134,8 +137,12 @@ def calculate_fft(audio_data, sample_rate, fft_duration, fft_window_size, window
         window = signal.windows.blackman(len(fft_data))
     elif window_function == 'bartlett':
         window = signal.windows.bartlett(len(fft_data))
-    elif window_function == 'kaiser':
+    elif window_function == 'kaiser_5.0':
+        window = signal.windows.kaiser(len(fft_data), beta=5.0)
+    elif window_function == 'kaiser_8.6':
         window = signal.windows.kaiser(len(fft_data), beta=8.6)
+    elif window_function == 'kaiser_14.0':
+        window = signal.windows.kaiser(len(fft_data), beta=14.0)
     elif window_function == 'blackmanharris':
         window = signal.windows.blackmanharris(len(fft_data))
     elif window_function == 'flattop':
@@ -462,13 +469,15 @@ with st.sidebar.expander("Advanced Settings", expanded=False):
             "Hamming",
             "Blackman",
             "Bartlett",
-            "Kaiser",
+            "Kaiser β=5.0",
+            "Kaiser β=8.6",
+            "Kaiser β=14.0",
             "Blackman-Harris",
             "Flat Top",
             "Tukey"
         ],
         index=1,  # Default to Hann for balanced speed and accuracy
-        help="Window function applied before FFT analysis"
+        help="Window function applied before FFT analysis. Kaiser β controls sidelobe suppression (higher β = lower sidelobes but wider mainlobe)"
     )
 
     # Data shift mode selection (for bell-shaped windows)
@@ -499,7 +508,9 @@ window_map = {
     "Hamming": "hamming",
     "Blackman": "blackman",
     "Bartlett": "bartlett",
-    "Kaiser": "kaiser",
+    "Kaiser β=5.0": "kaiser_5.0",
+    "Kaiser β=8.6": "kaiser_8.6",
+    "Kaiser β=14.0": "kaiser_14.0",
     "Blackman-Harris": "blackmanharris",
     "Flat Top": "flattop",
     "Tukey": "tukey"
