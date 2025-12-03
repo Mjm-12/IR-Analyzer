@@ -467,7 +467,7 @@ with st.sidebar.expander("Advanced Settings", expanded=False):
             "Flat Top",
             "Tukey"
         ],
-        index=0,
+        index=1,  # Default to Hann for balanced speed and accuracy
         help="Window function applied before FFT analysis"
     )
 
@@ -488,7 +488,7 @@ with st.sidebar.expander("Advanced Settings", expanded=False):
     smoothing_label = st.selectbox(
         "FFT Smoothing",
         options=["None", "1/48 Octave", "1/24 Octave", "1/12 Octave", "1/6 Octave", "1/3 Octave", "1 Octave"],
-        index=2,  # Default to 1/24 Octave
+        index=0,  # Default to None for maximum speed and precision
         help="Apply fractional octave smoothing to FFT results"
     )
 
