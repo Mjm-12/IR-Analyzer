@@ -412,7 +412,8 @@ st.markdown("Guitar Cabinet Impulse Response Analysis Tool")
 st.markdown("Upload multiple WAV files to analyze and visualize waveforms and FFT results.")
 
 # Sidebar for settings
-st.sidebar.header("Analysis Settings")
+# ==================== Waveform Settings ====================
+st.sidebar.header("Waveform Settings")
 
 # Display duration setting (in milliseconds)
 display_duration_ms = st.sidebar.slider(
@@ -426,6 +427,10 @@ display_duration_ms = st.sidebar.slider(
 # Convert to seconds for processing
 display_duration = display_duration_ms / 1000.0
 
+# ==================== FFT Settings ====================
+st.sidebar.markdown("---")
+st.sidebar.header("FFT Settings")
+
 # FFT duration setting (in milliseconds)
 fft_duration_ms = st.sidebar.slider(
     "FFT Analysis Duration (ms)",
@@ -438,7 +443,7 @@ fft_duration_ms = st.sidebar.slider(
 # Convert to seconds for processing
 fft_duration = fft_duration_ms / 1000.0
 
-# FFT settings
+# FFT window size
 fft_window_size = st.sidebar.selectbox(
     "FFT Window Size (Minimum)",
     options=[2048, 4096, 8192, 16384, 32768, 65536],
@@ -446,23 +451,47 @@ fft_window_size = st.sidebar.selectbox(
     help="Minimum FFT size. Actual FFT size is determined by FFT Analysis Duration (rounded to next power of 2). Larger values ensure minimum frequency resolution."
 )
 
-# Window function selection
-window_function = st.sidebar.selectbox(
-    "FFT Window Function",
-    options=[
-        "Rectangular (Boxcar)",
-        "Hann",
-        "Hamming",
-        "Blackman",
-        "Bartlett",
-        "Kaiser",
-        "Blackman-Harris",
-        "Flat Top",
-        "Tukey"
-    ],
-    index=0,
-    help="Window function applied before FFT analysis"
-)
+# Advanced Settings
+with st.sidebar.expander("Advanced Settings", expanded=False):
+    # Window function selection
+    window_function = st.selectbox(
+        "FFT Window Function",
+        options=[
+            "Rectangular (Boxcar)",
+            "Hann",
+            "Hamming",
+            "Blackman",
+            "Bartlett",
+            "Kaiser",
+            "Blackman-Harris",
+            "Flat Top",
+            "Tukey"
+        ],
+        index=0,
+        help="Window function applied before FFT analysis"
+    )
+
+    # Data shift mode selection (for bell-shaped windows)
+    data_shift_mode = st.selectbox(
+        "Data Shift Mode (for bell-shaped windows)",
+        options=[
+            "Auto (shift bell-shaped windows only)",
+            "None (no shift)",
+            "Circular Shift (move start to center)",
+            "Peak Centering (auto-detect and center peak)"
+        ],
+        index=0,
+        help="Shift data before applying window to improve SNR for bell-shaped windows (Kaiser, Blackman, etc.)"
+    )
+
+    # Octave smoothing
+    smoothing_label = st.selectbox(
+        "FFT Smoothing",
+        options=["None", "1/48 Octave", "1/24 Octave", "1/12 Octave", "1/6 Octave", "1/3 Octave", "1 Octave"],
+        index=2,  # Default to 1/24 Octave
+        help="Apply fractional octave smoothing to FFT results"
+    )
+
 # Map display names to function names
 window_map = {
     "Rectangular (Boxcar)": "boxcar",
@@ -477,18 +506,6 @@ window_map = {
 }
 window_func_name = window_map[window_function]
 
-# Data shift mode selection (for bell-shaped windows)
-data_shift_mode = st.sidebar.selectbox(
-    "Data Shift Mode (for bell-shaped windows)",
-    options=[
-        "Auto (shift bell-shaped windows only)",
-        "None (no shift)",
-        "Circular Shift (move start to center)",
-        "Peak Centering (auto-detect and center peak)"
-    ],
-    index=0,
-    help="Shift data before applying window to improve SNR for bell-shaped windows (Kaiser, Blackman, etc.)"
-)
 # Map display names to mode names
 shift_mode_map = {
     "Auto (shift bell-shaped windows only)": "auto",
@@ -498,7 +515,7 @@ shift_mode_map = {
 }
 shift_mode_name = shift_mode_map[data_shift_mode]
 
-# Octave smoothing
+# Smoothing options mapping
 smoothing_options = {
     "None": 0,
     "1/48 Octave": 48,
@@ -508,13 +525,19 @@ smoothing_options = {
     "1/3 Octave": 3,
     "1 Octave": 1
 }
-smoothing_label = st.sidebar.selectbox(
-    "FFT Smoothing",
-    options=list(smoothing_options.keys()),
-    index=2,  # Default to 1/24 Octave
-    help="Apply fractional octave smoothing to FFT results"
-)
 smoothing = smoothing_options[smoothing_label]
+
+# ==================== Graph Appearance ====================
+st.sidebar.markdown("---")
+st.sidebar.header("Graph Appearance")
+
+# FFT Y-axis range
+fft_y_min = st.sidebar.selectbox(
+    "FFT Y-axis Minimum (dB)",
+    options=list(range(-10, -130, -10)),  # -10, -20, -30, ..., -120
+    index=3,  # Default to -40
+    help="Set the minimum value for FFT plot Y-axis (maximum is fixed at +5 dB)"
+)
 
 # Color scheme selection
 color_scheme = st.sidebar.selectbox(
@@ -536,32 +559,6 @@ color_scheme_map = {
     "Gradient Interpolation": "gradient"
 }
 color_scheme_name = color_scheme_map[color_scheme]
-
-# FFT Y-axis range
-fft_y_min = st.sidebar.selectbox(
-    "FFT Y-axis Minimum (dB)",
-    options=list(range(-10, -130, -10)),  # -10, -20, -30, ..., -120
-    index=3,  # Default to -40
-    help="Set the minimum value for FFT plot Y-axis (maximum is fixed at +5 dB)"
-)
-
-# Export Settings Section
-st.sidebar.markdown("---")
-st.sidebar.header("Export Settings")
-
-# Graph resolution (DPI) for export
-graph_dpi = st.sidebar.selectbox(
-    "Export Image Resolution (DPI)",
-    options=[100, 200, 300, 400, 600, 800, 1000, 1200, 1500, 2000],
-    index=3,  # Default to 400 DPI
-    help="🔽 Resolution for downloaded images. Preview is limited by browser, but downloads will use full resolution."
-)
-
-st.sidebar.info("💡 Higher DPI = sharper prints & larger files")
-
-# Graph Appearance Settings
-st.sidebar.markdown("---")
-st.sidebar.header("Graph Appearance")
 
 # Text settings
 with st.sidebar.expander("Text Settings", expanded=False):
@@ -588,6 +585,20 @@ with st.sidebar.expander("Grid Settings", expanded=False):
     grid_b = st.slider("Blue", min_value=0, max_value=255, value=128, key="grid_b")
     grid_color = f"#{grid_r:02x}{grid_g:02x}{grid_b:02x}"
     st.color_picker("Preview", value=grid_color, disabled=True, key="grid_preview")
+
+# ==================== Export Settings ====================
+st.sidebar.markdown("---")
+st.sidebar.header("Export Settings")
+
+# Graph resolution (DPI) for export
+graph_dpi = st.sidebar.selectbox(
+    "Export Image Resolution (DPI)",
+    options=[100, 200, 300, 400, 600, 800, 1000, 1200, 1500, 2000],
+    index=3,  # Default to 400 DPI
+    help="🔽 Resolution for downloaded images. Preview is limited by browser, but downloads will use full resolution."
+)
+
+st.sidebar.info("💡 Higher DPI = sharper prints & larger files")
 
 # File Upload Section
 st.header("File Upload")
